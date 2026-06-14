@@ -1,9 +1,18 @@
+# 👥 Anggota Kelompok 11
+
+| Nama | NIM | Peran dalam Proyek |
+| :--- | :---: | :--- |
+| Yusran Rizqi Laksono | L0124125 | Backend |
+| Ghazi Fahmi Ramadhan | L0124130 | Frontend |
+| Maria Dewi Handayani | L0124132 | ML Engineer |
+
+---
+
 # PostureMate: Sistem Klasifikasi Postur Duduk Mahasiswa dengan Dashboard Analitik Berbasis MediaPipe
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.0%2B-green.svg)](https://google.github.io/mediapipe/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.20.0%2B-red.svg)](https://streamlit.io/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **PostureMate** adalah sistem klasifikasi postur duduk mahasiswa secara real-time yang dirancang untuk mendeteksi kebiasaan duduk tidak sehat dan memberikan visualisasi analitik melalui dashboard interaktif. Proyek ini dikembangkan menggunakan **MediaPipe Pose** untuk ekstraksi landmark tubuh, algoritma machine learning (**KNN** & **Decision Tree**) untuk klasifikasi postur, dan **Streamlit** untuk dashboard analitik.
 
@@ -31,40 +40,10 @@ Sistem PostureMate bekerja dengan alur kerja berikut:
 
 ---
 
-## 📁 Struktur Repositori
-
-Proyek ini memiliki struktur direktori sebagai berikut:
-
-```text
-posturemate/
-├── app/
-│   ├── main.py              # Skrip utama untuk aplikasi deteksi postur real-time
-│   └── dashboard.py         # Skrip Streamlit untuk visualisasi dashboard analitik
-├── data/
-│   ├── raw/                 # Folder penyimpanan dataset mentah (video/gambar)
-│   └── processed/           # Folder penyimpanan data fitur yang telah diekstrak (.csv)
-├── docs/
-│   ├── progress_1.pdf       # Dokumen progres 1
-│   ├── progress_2.pdf       # Dokumen progres 2
-│   ├── proposal.pdf         # Proposal projek
-│   └── images/              # Gambar/Aset dokumentasi untuk README
-├── notebooks/
-│   └── eksplorasi_dataset.ipynb  # Notebook untuk Eksplorasi Data Analisis (EDA) & eksperimen model
-├── src/
-│   ├── feature_engineering.py # Perhitungan sudut, ekstraksi fitur dari landmark MediaPipe
-│   ├── rekam_dataset.py       # Perekaman data koordinat kustom menggunakan webcam
-│   ├── test_mediapipe.py      # Pengujian dasar instalasi MediaPipe dan OpenCV
-│   └── train_model.py         # Pelatihan dan evaluasi model (KNN & Decision Tree)
-├── requirements.txt         # Daftar dependency package Python
-└── README.md                # Dokumentasi internal subfolder
-```
-
----
-
 ## 🛠️ Instalasi & Setup
 
 ### Prasyarat
-Pastikan Anda sudah menginstal **Python 3.8** atau versi yang lebih tinggi di komputer Anda.
+Pastikan Anda sudah menginstal **Python 3.11** di komputer Anda.
 
 ### Langkah-langkah
 1. **Clone Repositori**
@@ -132,18 +111,3 @@ Fitur input klasifikasi diekstrak dari landmark MediaPipe Pose (3D Coordinates):
 * **Kelengkungan Punggung (Torso Angle)**: Sudut inklinasi punggung terhadap garis vertikal bumi.
 * **Kemiringan Bahu (Shoulder Level)**: Perbedaan tinggi antara bahu kiri dan kanan untuk mendeteksi posisi duduk miring.
 * **Jarak ke Kamera (Distance)**: Jarak relatif wajah ke kamera untuk memantau jika mahasiswa duduk terlalu dekat dengan layar.
-
----
-
-## 👥 Anggota Kelompok (Kelompok 11)
-
-| Nama | NIM | Peran dalam Proyek |
-| :--- | :---: | :--- |
-| **Yusran Rizqi Laksono** | L0124125 | Backend |
-| **Ghazi Fahmi Ramadhan** | L0124130 | Frontend |
-| **Maria Dewi Handayani** | L0124132 | ML Engineer |
-
----
-
-## 📄 Lisensi
-Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](LICENSE) untuk detail lebih lanjut.
