@@ -1,17 +1,13 @@
-# PostureMate
+# PostureMate Source Code Folder
 
-Project untuk deteksi postur tubuh menggunakan MediaPipe, scikit-learn, dan Streamlit.
+Folder ini berisi seluruh kode sumber (*source code*), dataset lokal, modul pemrosesan, model eksperimental, dan dokumentasi terkait untuk proyek **PostureMate: Sistem Klasifikasi Postur Duduk Mahasiswa dengan Dashboard Analitik Berbasis MediaPipe**.
 
-## Struktur Proyek
-- data/ : dataset lokal
-- notebooks/ : eksperimen notebook
-- src/ : skrip pengolahan data dan pelatihan model
-- app/ : aplikasi real-time dan dashboard
-- docs/ : dokumentasi dan slide
+Untuk informasi lengkap mengenai proyek ini, termasuk:
+* 🌟 Fitur Utama
+* 🏗️ Arsitektur Sistem
+* 📁 Struktur Repositori & Penjelasan File
+* 🛠️ Instalasi & Cara Menjalankan Aplikasi
+* 👥 Anggota Kelompok
 
-## Instalasi
-1. pip install -r requirements.txt
-2. Jalankan skrip di src/ untuk rekam dataset atau testing pose.
+Silakan lihat dan baca **[README Utama Proyek](../README.md)** di tingkat root repositori.
 
-## Catatan
-Dataset asli dan file besar disimpan di folder data/ dan tidak perlu di-push ke GitHub.
