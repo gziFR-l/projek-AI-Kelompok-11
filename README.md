@@ -137,14 +137,11 @@ Fitur input klasifikasi diekstrak dari landmark MediaPipe Pose (3D Coordinates):
 
 ## 👥 Anggota Kelompok (Kelompok 11)
 
-| Foto | Nama | NIM | Peran dalam Proyek |
-| :---: | :--- | :---: | :--- |
-| ![Member 1](https://via.placeholder.com/80) | **Nama Anggota 1** | NIM_1 | AI Developer / Feature Engineering |
-| ![Member 2](https://via.placeholder.com/80) | **Nama Anggota 2** | NIM_2 | UI/UX & Dashboard Streamlit Dev |
-| ![Member 3](https://via.placeholder.com/80) | **Nama Anggota 3** | NIM_3 | Data Acquisition & Preprocessing |
-| ![Member 4](https://via.placeholder.com/80) | **Nama Anggota 4** | NIM_4 | Model Evaluation & Documentation |
-
-*(Silakan edit tabel di atas sesuai dengan nama anggota kelompok Anda)*
+| Nama | NIM | Peran dalam Proyek |
+| :--- | :---: | :--- |
+| **Yusran Rizqi Laksono** | L0124125 | Backend |
+| **Ghazi Fahmi Ramadhan** | L0124130 | Frontend |
+| **Maria Dewi Handayani** | L0124132 | ML Engineer |
 
 ---
 
