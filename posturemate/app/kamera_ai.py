@@ -1,3 +1,4 @@
+from typing import Any
 import cv2
 import mediapipe as mp
 import pickle
@@ -5,6 +6,7 @@ import numpy as np
 import warnings
 import math
 from collections import deque
+
 import os
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -47,11 +49,11 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             break
 
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = pose.process(image_rgb)
+        results: Any = pose.process(image_rgb)
 
         if results.pose_landmarks and results.pose_world_landmarks:
             mp_drawing.draw_landmarks(
-                image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS,
+                image, results.pose_landmarks, list(mp_pose.POSE_CONNECTIONS),
                 mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2),
                 mp_drawing.DrawingSpec(color=(0,0,255), thickness=2, circle_radius=2)
             )
