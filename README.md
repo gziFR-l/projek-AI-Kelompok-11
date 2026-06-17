@@ -4,7 +4,7 @@
 | :--- | :---: | :--- |
 | Yusran Rizqi Laksono | L0124125 | Backend |
 | Ghazi Fahmi Ramadhan | L0124130 | Frontend |
-| Maria Dewi Handayani | L0124132 | ML Engineer |
+| Maria Dewi Handayani | L0124132 | UI/UX Design |
 
 ---
 
