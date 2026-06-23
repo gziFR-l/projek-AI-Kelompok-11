@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -86,6 +86,11 @@ prediksi_bin = model_biner.predict(X_test_bin)
 akurasi_bin = accuracy_score(y_test_bin, prediksi_bin)
 print(f"5. Selesai! Akurasi Model Biner: {akurasi_bin * 100:.2f}%")
 
+print("   Melakukan 5-Fold Cross-Validation untuk Model Biner...")
+skor_biner = cross_val_score(model_biner, X_gabungan_normal, y_gabungan, cv=5)
+print(f"   Akurasi tiap Fold: {skor_biner}")
+print(f"   Rata-rata Akurasi: {skor_biner.mean() * 100:.2f}% (Std Dev: {skor_biner.std() * 100:.2f}%)\n")
+
 with open(MODEL_BINER_PATH, 'wb') as f:
     pickle.dump(model_biner, f)
 print(f"6. Model Biner berhasil disimpan di: {MODEL_BINER_PATH}\n")
@@ -132,6 +137,11 @@ model_multiclass.fit(X_train_mul, y_train_mul)
 prediksi_mul = model_multiclass.predict(X_test_mul)
 akurasi_mul = accuracy_score(y_test_mul, prediksi_mul)
 print(f"4. Selesai! Akurasi Model Multiclass: {akurasi_mul * 100:.2f}%")
+
+print("   Melakukan 5-Fold Cross-Validation untuk Model Multiclass...")
+skor_multi = cross_val_score(model_multiclass, X_multi_normal, y_publik_multi, cv=5)
+print(f"   Akurasi tiap Fold: {skor_multi}")
+print(f"   Rata-rata Akurasi: {skor_multi.mean() * 100:.2f}% (Std Dev: {skor_multi.std() * 100:.2f}%)\n")
 
 with open(MODEL_MULTICLASS_PATH, 'wb') as f:
     pickle.dump(model_multiclass, f)
