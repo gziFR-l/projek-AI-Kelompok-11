@@ -24,17 +24,23 @@ app.add_middleware(
 def halaman_utama():
     return RedirectResponse(url="/docs")
 
-# 3. Muat Otak AI secara dinamis dengan path absolut
+# 3. Muat Otak AI secara dinamis dengan path absolut (Model Biner & Multiclass)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "model_postur.pkl")
+MODEL_BINER_PATH = os.path.join(BASE_DIR, "model_biner.pkl")
+MODEL_MULTICLASS_PATH = os.path.join(BASE_DIR, "model_multiclass.pkl")
 
-model = None
+model_biner = None
+model_multiclass = None
+
 try:
-    with open(MODEL_PATH, 'rb') as f:
-        model = pickle.load(f)
+    with open(MODEL_BINER_PATH, 'rb') as f:
+        model_biner = pickle.load(f)
+    with open(MODEL_MULTICLASS_PATH, 'rb') as f:
+        model_multiclass = pickle.load(f)
+    print("Kedua model AI berhasil dimuat.")
 except FileNotFoundError:
     # Mengamankan agar server tetap bisa berjalan/start meskipun model belum dilatih
-    print(f"Peringatan: File model_postur.pkl tidak ditemukan di {MODEL_PATH}!")
+    print(f"Peringatan: File model_biner.pkl atau model_multiclass.pkl belum lengkap!")
 
 # 4. Kontrak Data
 class InputPostur(BaseModel):
@@ -61,13 +67,13 @@ def hitung_metrik(baris_koordinat):
     jarak_leher = (rata_z_bahu - rata_z_telinga) * 100
     return kemiringan, jarak_leher
 
-# 5. Endpoint Deteksi
+# 5. Endpoint Deteksi (Model Bertingkat)
 @app.post("/api/deteksi")
 def deteksi_postur_endpoint(data: InputPostur):
-    if model is None:
+    if model_biner is None or model_multiclass is None:
         raise HTTPException(
             status_code=503, 
-            detail="Model AI (model_postur.pkl) belum siap. Silakan jalankan latih_ai.py terlebih dahulu."
+            detail="Model AI (model_biner.pkl & model_multiclass.pkl) belum siap. Silakan jalankan latih_ai.py terlebih dahulu."
         )
         
     if len(data.koordinat) != 99:
@@ -76,15 +82,36 @@ def deteksi_postur_endpoint(data: InputPostur):
     kemiringan, jarak_leher = hitung_metrik(data.koordinat)
     koordinat_normal = normalisasi_koordinat(data.koordinat)
     X_input = np.array(koordinat_normal).reshape(1, -1)
-    tebakan_ai = model.predict(X_input)[0]
+    
+    # Tingkat 1: Prediksi Biner
+    tebakan_ai = model_biner.predict(X_input)[0]
+    
+    # Tingkat 2: Prediksi Detail Multiclass jika dideteksi Non-Ergonomis
+    tebakan_detail = ""
+    pesan_rekomendasi = "Aman"
+    if tebakan_ai == "Non-Ergonomis":
+        tebakan_detail = model_multiclass.predict(X_input)[0]
+        
+        # Pemetaan pesan rekomendasi
+        if tebakan_detail == "TLF":
+            pesan_rekomendasi = "Tegakkan Punggung"
+        elif tebakan_detail == "TLB":
+            pesan_rekomendasi = "Badan Terlalu Bersandar"
+        elif tebakan_detail == "TLL":
+            pesan_rekomendasi = "Miring Kiri"
+        elif tebakan_detail == "TLR":
+            pesan_rekomendasi = "Miring Kanan"
+        else:
+            pesan_rekomendasi = "Tegakkan Punggung"
 
     return {
         "prediksi_ai": tebakan_ai,
+        "detail_non_ergonomis": tebakan_detail,
         "metrik": {
             "kemiringan_bahu_derajat": round(kemiringan, 2),
             "jarak_leher_cm": round(jarak_leher, 2)
         },
-        "pesan": "Berhasil diproses"
+        "pesan": pesan_rekomendasi
     }
 
 # 6. Runner Block untuk menjalankan python server.py secara langsung
