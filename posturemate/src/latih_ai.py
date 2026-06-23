@@ -4,11 +4,10 @@ import pickle
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-
-# TAMBAHAN: Mengimpor algoritma yang diwajibkan
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import StackingClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.pipeline import Pipeline
 
 # Menentukan path absolut berdasarkan lokasi file latih_ai.py ini
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +15,7 @@ DATASET_PATH = os.path.join(BASE_DIR, "data", "dataset.csv")
 DATA_RIIL_PATH = os.path.join(BASE_DIR, "data", "data_riil.csv")
 MODEL_PATH = os.path.join(BASE_DIR, "model_postur.pkl")
 
-# --- FUNGSI NORMALISASI MATEMATIS ---
+# FUNGSI NORMALISASI MATEMATIS
 def normalisasi_koordinat(baris_koordinat):
     coords = np.array(baris_koordinat).reshape(33, 3)
     tengah_bahu = (coords[11] + coords[12]) / 2.0
@@ -56,31 +55,27 @@ X_gabungan_normal = np.array([normalisasi_koordinat(baris) for baris in X_gabung
 print("4. Memulai proses pembelajaran...")
 X_train, X_test, y_train, y_test = train_test_split(X_gabungan_normal, y_gabungan, test_size=0.2, random_state=42)
 
-# =========================================================
-# IMPLEMENTASI ENSEMBLE: DECISION TREE ➔ KNN
-# =========================================================
-# Tahap 1: Inisialisasi Decision Tree
+# Tahap 1: Inisialisasi Decision Tree untuk seleksi fitur
 dt_estimator = DecisionTreeClassifier(max_depth=10, random_state=42)
 
-# Tahap 2: Inisialisasi KNN (misalnya mengambil 5 tetangga terdekat)
+# Tahap 2: Gunakan SelectFromModel untuk menyaring 15 fitur terbaik
+selector = SelectFromModel(estimator=dt_estimator, max_features=15, threshold=-np.inf)
+
+# Tahap 3: Inisialisasi KNN (mengambil 5 tetangga terdekat)
 knn_estimator = KNeighborsClassifier(n_neighbors=5)
 
-# Tahap 3: Menggabungkan keduanya dalam StackingClassifier
-# passthrough=True artinya KNN tidak hanya menerima tebakan dari DT, 
-# tetapi juga diizinkan melihat data kordinat asli untuk pertimbangan.
-model_gabungan = StackingClassifier(
-    estimators=[('decision_tree', dt_estimator)],
-    final_estimator=knn_estimator,
-    passthrough=True
-)
+# Tahap 4: Gabungkan dalam Pipeline (DT -> Seleksi Fitur -> KNN)
+model_gabungan = Pipeline([
+    ('feature_selection', selector),
+    ('classification', knn_estimator)
+])
 
-# Latih model gabungannya
+# Latih pipeline model
 model_gabungan.fit(X_train, y_train)
-# =========================================================
 
 prediksi = model_gabungan.predict(X_test)
 akurasi = accuracy_score(y_test, prediksi)
-print(f"5. Latihan Selesai! Akurasi DT-KNN Pipeline: {akurasi * 100:.2f}%")
+print(f"5. Latihan Selesai! Akurasi DT-KNN Pipeline (15 Fitur): {akurasi * 100:.2f}%")
 
 with open(MODEL_PATH, 'wb') as f:
     pickle.dump(model_gabungan, f)
