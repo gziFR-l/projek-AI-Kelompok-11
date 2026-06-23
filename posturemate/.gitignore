@@ -1,5 +1,7 @@
 data/*.csv
 !data/.gitkeep
+data/*.db
+*.db
 
 # Python cache
 __pycache__/
