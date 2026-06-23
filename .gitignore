@@ -21,3 +21,6 @@ Thumbs.db
 posturemate/data/*.csv
 !posturemate/data/.gitkeep
 posturemate/model_postur.pkl
+posturemate/data/*.db
+*.db
+
