@@ -22,9 +22,10 @@ def normalisasi_koordinat(baris_koordinat):
     coords_normal = (coords - tengah_pinggul) / panjang_tulang
     return coords_normal.flatten().tolist()
 
-# Tentukan path absolut untuk model_postur.pkl
+# Tentukan path absolut untuk model biner dan multiclass
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "model_postur.pkl")
+MODEL_BINER_PATH = os.path.join(BASE_DIR, "model_biner.pkl")
+MODEL_MULTICLASS_PATH = os.path.join(BASE_DIR, "model_multiclass.pkl")
 
 def inisialisasi_db():
     db_dir = os.path.join(BASE_DIR, "data")
@@ -47,11 +48,13 @@ def inisialisasi_db():
     return db_path
 
 try:
-    with open(MODEL_PATH, 'rb') as f:
-        model = pickle.load(f)
-    print("BERHASIL: Otak AI (model_postur.pkl) dimuat!")
+    with open(MODEL_BINER_PATH, 'rb') as f:
+        model_biner = pickle.load(f)
+    with open(MODEL_MULTICLASS_PATH, 'rb') as f:
+        model_multiclass = pickle.load(f)
+    print("BERHASIL: Kedua model AI (Biner & Multiclass) dimuat!")
 except FileNotFoundError:
-    print(f"GAGAL: File model_postur.pkl tidak ditemukan di {MODEL_PATH}. Jalankan latih_ai.py terlebih dahulu!")
+    print(f"GAGAL: Berkas model tidak lengkap di {BASE_DIR}. Pastikan model_biner.pkl dan model_multiclass.pkl sudah dibuat lewat latih_ai.py!")
     exit()
 
 mp_pose = mp.solutions.pose
@@ -97,7 +100,6 @@ try:
             exit()
 
         print("Memulai deteksi postur...")
-
         last_save_time = 0
 
         while cap.isOpened():
@@ -159,16 +161,35 @@ try:
                 cv2.line(image, tengah_bahu, tengah_pinggul, (255, 255, 0), 3) 
                 cv2.line(image, tengah_bahu, tengah_telinga, (0, 165, 255), 3)
 
-                # PREDIKSI AI DENGAN DATA NORMALISASI
+                # PREDIKSI AI DENGAN DATA NORMALISASI (MODEL BERTINGKAT)
                 koordinat_tubuh = []
                 for landmark in world_landmarks:
                     koordinat_tubuh.extend([landmark.x, landmark.y, landmark.z])
                 
                 koordinat_normal = normalisasi_koordinat(koordinat_tubuh)
                 X_input = np.array(koordinat_normal).reshape(1, -1)
-                tebakan_ai = model.predict(X_input)[0]
+                
+                # Tingkat 1: Prediksi Biner
+                tebakan_ai = model_biner.predict(X_input)[0]
+                
+                # Tingkat 2: Prediksi Detail Multiclass (jika dideteksi Non-Ergonomis)
+                tebakan_detail = ""
+                if tebakan_ai == "Non-Ergonomis":
+                    tebakan_detail = model_multiclass.predict(X_input)[0]
 
                 pesan_tambahan = ""
+
+                # Fungsi pemetaan pesan detail dari Model Multiclass
+                def dapatkan_pesan_detail(label_multi):
+                    if label_multi == "TLF":
+                        return "(Tegakkan Punggung)"
+                    elif label_multi == "TLB":
+                        return "(Badan Terlalu Bersandar)"
+                    elif label_multi == "TLL":
+                        return "(Miring Kiri)"
+                    elif label_multi == "TLR":
+                        return "(Miring Kanan)"
+                    return "(Tegakkan Punggung)"
 
                 # LOGIKA HYSTERESIS & PESAN KUSTOM
                 if status_terakhir == "Ergonomis":
@@ -180,7 +201,7 @@ try:
                         pesan_tambahan = "(Tarik Lehermu)"
                     elif tebakan_ai == "Non-Ergonomis":
                         status_terakhir = "Non-Ergonomis"
-                        pesan_tambahan = "(Tegakkan Punggung)"
+                        pesan_tambahan = dapatkan_pesan_detail(tebakan_detail)
                 else:
                     # Syarat untuk kembali hijau DILONGGARKAN
                     if kemiringan_halus < 2.5 and jarak_leher_halus < 8.0 and tebakan_ai == "Ergonomis":
@@ -193,7 +214,7 @@ try:
                         elif jarak_leher_halus >= 8.5: 
                             pesan_tambahan = "(Tarik Lehermu)"
                         else:
-                            pesan_tambahan = "(Tegakkan Punggung)"
+                            pesan_tambahan = dapatkan_pesan_detail(tebakan_detail)
 
                 tebakan_final = f"{status_terakhir} {pesan_tambahan}".strip()
                 warna_teks = (0, 0, 255) if status_terakhir == 'Non-Ergonomis' else (0, 255, 0)
