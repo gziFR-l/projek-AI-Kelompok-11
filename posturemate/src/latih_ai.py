@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import StackingClassifier
 from sklearn.feature_selection import SelectFromModel
 from sklearn.pipeline import Pipeline
 
@@ -56,18 +57,25 @@ print("4. Memulai proses pembelajaran...")
 X_train, X_test, y_train, y_test = train_test_split(X_gabungan_normal, y_gabungan, test_size=0.2, random_state=42)
 
 # Tahap 1: Inisialisasi Decision Tree untuk seleksi fitur
-dt_estimator = DecisionTreeClassifier(max_depth=10, random_state=42)
+dt_selector = DecisionTreeClassifier(max_depth=10, random_state=42)
 
 # Tahap 2: Gunakan SelectFromModel untuk menyaring 15 fitur terbaik
-selector = SelectFromModel(estimator=dt_estimator, max_features=15, threshold=-np.inf)
+selector = SelectFromModel(estimator=dt_selector, max_features=15, threshold=-np.inf)
 
-# Tahap 3: Inisialisasi KNN (mengambil 5 tetangga terdekat)
+# Tahap 3: Inisialisasi estimator Stacking (DT & KNN) yang akan memproses 15 fitur terpilih
+dt_estimator = DecisionTreeClassifier(max_depth=10, random_state=42)
 knn_estimator = KNeighborsClassifier(n_neighbors=5)
 
-# Tahap 4: Gabungkan dalam Pipeline (DT -> Seleksi Fitur -> KNN)
+stacking_model = StackingClassifier(
+    estimators=[('decision_tree', dt_estimator)],
+    final_estimator=knn_estimator,
+    passthrough=True
+)
+
+# Tahap 4: Gabungkan dalam Pipeline (Seleksi Fitur -> Stacking Classifier)
 model_gabungan = Pipeline([
     ('feature_selection', selector),
-    ('classification', knn_estimator)
+    ('ensemble', stacking_model)
 ])
 
 # Latih pipeline model
@@ -75,8 +83,8 @@ model_gabungan.fit(X_train, y_train)
 
 prediksi = model_gabungan.predict(X_test)
 akurasi = accuracy_score(y_test, prediksi)
-print(f"5. Latihan Selesai! Akurasi DT-KNN Pipeline (15 Fitur): {akurasi * 100:.2f}%")
+print(f"5. Latihan Selesai! Akurasi DT-KNN Pipeline (15 Fitur + Stacking): {akurasi * 100:.2f}%")
 
 with open(MODEL_PATH, 'wb') as f:
     pickle.dump(model_gabungan, f)
-print(f"6. Otak AI (Decision Tree + KNN) berhasil disimpan di: {MODEL_PATH}")
+print(f"6. Otak AI (Decision Tree + KNN Stacking) berhasil disimpan di: {MODEL_PATH}")
