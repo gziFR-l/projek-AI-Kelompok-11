@@ -11,7 +11,7 @@ import os
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# --- FUNGSI NORMALISASI MATEMATIS ---
+# FUNGSI NORMALISASI MATEMATIS
 def normalisasi_koordinat(baris_koordinat):
     coords = np.array(baris_koordinat).reshape(33, 3)
     tengah_bahu = (coords[11] + coords[12]) / 2.0
@@ -40,12 +40,43 @@ history_kemiringan = deque(maxlen=10)
 history_leher_z = deque(maxlen=10)
 status_terakhir = "Ergonomis" 
 
-cap = cv2.VideoCapture(0)
-
 with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+    cap = None
+    # Prioritaskan indeks kamera eksternal (biasanya 1 atau 2) sebelum fallback ke kamera bawaan (indeks 0)
+    for idx in [1, 2, 0]:
+        temp_cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if not temp_cap.isOpened():
+            temp_cap = cv2.VideoCapture(idx)
+        
+        if temp_cap.isOpened():
+            # Uji coba membaca beberapa frame untuk memastikan stream benar-benar aktif
+            success = True
+            for _ in range(5):
+                ret, _ = temp_cap.read()
+                if not ret:
+                    success = False
+                    break
+            if success:
+                cap = temp_cap
+                print(f"Kamera berhasil dibuka menggunakan indeks {idx}.")
+                break
+            else:
+                temp_cap.release()
+
+    if cap is None:
+        print("ERROR: Kamera/Webcam tidak dapat dibuka atau tidak dapat membaca frame.")
+        print("Pastikan:")
+        print("1. Kamera fisik terhubung ke komputer.")
+        print("2. Kamera tidak sedang digunakan oleh aplikasi lain (seperti Zoom, Teams, browser, dll.).")
+        print("3. Driver kamera Anda sudah terpasang dengan benar.")
+        exit()
+
+    print("Memulai deteksi postur...")
+
     while cap.isOpened():
         success, image = cap.read()
         if not success:
+            print("Peringatan: Gagal membaca frame dari kamera. Menghentikan program...")
             break
 
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -101,9 +132,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             cv2.line(image, tengah_bahu, tengah_pinggul, (255, 255, 0), 3) 
             cv2.line(image, tengah_bahu, tengah_telinga, (0, 165, 255), 3)
 
-            # ==========================================
             # PREDIKSI AI DENGAN DATA NORMALISASI
-            # ==========================================
             koordinat_tubuh = []
             for landmark in world_landmarks:
                 koordinat_tubuh.extend([landmark.x, landmark.y, landmark.z])
@@ -114,14 +143,12 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
             pesan_tambahan = ""
 
-            # ==========================================
             # LOGIKA HYSTERESIS & PESAN KUSTOM
-            # ==========================================
             if status_terakhir == "Ergonomis":
-                if kemiringan_halus > 4.0: 
+                if kemiringan_halus > 6.0: 
                     status_terakhir = "Non-Ergonomis"
                     pesan_tambahan = "(Perbaiki Bahumu)"
-                elif jarak_leher_halus > 6.5: 
+                elif jarak_leher_halus > 9.0: 
                     status_terakhir = "Non-Ergonomis"
                     pesan_tambahan = "(Tarik Lehermu)"
                 elif tebakan_ai == "Non-Ergonomis":
@@ -129,14 +156,14 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                     pesan_tambahan = "(Tegakkan Punggung)"
             else:
                 # Syarat untuk kembali hijau DILONGGARKAN
-                if kemiringan_halus < 2.5 and jarak_leher_halus < 5.5 and tebakan_ai == "Ergonomis":
+                if kemiringan_halus < 2.5 and jarak_leher_halus < 8.0 and tebakan_ai == "Ergonomis":
                     status_terakhir = "Ergonomis"
                     pesan_tambahan = ""
                 else:
                     # Menjaga pesan tetap relevan dengan batas yang lebih longgar
-                    if kemiringan_halus >= 2.5:
+                    if kemiringan_halus >= 3.5:
                         pesan_tambahan = "(Perbaiki Bahumu)"
-                    elif jarak_leher_halus >= 5.5: 
+                    elif jarak_leher_halus >= 8.5: 
                         pesan_tambahan = "(Tarik Lehermu)"
                     else:
                         pesan_tambahan = "(Tegakkan Punggung)"
