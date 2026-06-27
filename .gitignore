@@ -18,7 +18,7 @@ ENV/
 Thumbs.db
 
 # Project specific large files / data
-posturemate/data/*.csv
+# posturemate/data/*.csv
 !posturemate/data/.gitkeep
 posturemate/model_postur.pkl
 posturemate/data/*.db
