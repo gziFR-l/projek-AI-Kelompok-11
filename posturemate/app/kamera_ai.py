@@ -70,11 +70,11 @@ cap = None
 
 try:
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
-        # Prioritaskan indeks kamera eksternal (biasanya 1 atau 2) sebelum fallback ke kamera bawaan (indeks 0)
-        for idx in [1, 2, 0]:
-            temp_cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        # Prioritaskan indeks kamera bawaan/utama (0) sebelum memeriksa eksternal (1 atau 2)
+        for idx in [0, 1, 2]:
+            temp_cap = cv2.VideoCapture(idx)
             if not temp_cap.isOpened():
-                temp_cap = cv2.VideoCapture(idx)
+                temp_cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
             
             if temp_cap.isOpened():
                 # Uji coba membaca beberapa frame untuk memastikan stream benar-benar aktif
