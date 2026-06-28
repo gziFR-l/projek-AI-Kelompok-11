@@ -9,6 +9,7 @@ from collections import deque
 import os
 import sqlite3
 import time
+import requests
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -40,12 +41,18 @@ def inisialisasi_db():
             status_postur TEXT,
             kemiringan_bahu REAL,
             jarak_leher REAL,
-            pesan TEXT
+            pesan TEXT,
+            detail_postur TEXT
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE riwayat_postur ADD COLUMN detail_postur TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
     return db_path
+
 
 try:
     with open(MODEL_BINER_PATH, 'rb') as f:
@@ -219,10 +226,45 @@ try:
                 tebakan_final = f"{status_terakhir} {pesan_tambahan}".strip()
                 warna_teks = (0, 0, 255) if status_terakhir == 'Non-Ergonomis' else (0, 255, 0)
 
+                # Kirim koordinat ke server API jika server berjalan
+                response = None
+                try:
+                    response = requests.post(
+                        "http://127.0.0.1:8000/api/deteksi", 
+                        json={"koordinat": koordinat_tubuh},
+                        timeout=0.1
+                    )
+                except Exception:
+                    pass
+
                 # Menampilkan UI
                 cv2.rectangle(image, (0, 0), (650, 100), (0, 0, 0), -1) 
-                cv2.putText(image, f"Status: {tebakan_final}", (10, 30), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, warna_teks, 2, cv2.LINE_AA)
+
+                api_success = False
+                detail_postur = tebakan_detail # Default detail dari model lokal
+                if response is not None and response.status_code == 200:
+                    try:
+                        data = response.json()
+                        status_utama = data["prediksi_ai"]
+                        status_detail = data["detail_non_ergonomis"] # Tangkap data spesifiknya
+                        detail_postur = status_detail # Simpan data detail dari API
+
+                        # Update data lokal untuk sinkronisasi database
+                        status_terakhir = status_utama
+                        pesan_tambahan = f"({data['pesan']})" if status_utama == "Non-Ergonomis" else ""
+                        warna_teks = (0, 0, 255) if status_utama == 'Non-Ergonomis' else (0, 255, 0)
+
+                        # Tampilkan di layar kamera
+                        cv2.putText(image, f"Status: {status_utama} ({status_detail})", (10, 30), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, warna_teks, 2, cv2.LINE_AA)
+                        api_success = True
+                    except Exception:
+                        pass
+
+                if not api_success:
+                    cv2.putText(image, f"Status: {tebakan_final}", (10, 30), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, warna_teks, 2, cv2.LINE_AA)
+
                 cv2.putText(image, f"Kemiringan Bahu: {kemiringan_halus:.1f} Derajat", (10, 60), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
                 cv2.putText(image, f"Jarak Leher (Z): {jarak_leher_halus:.1f} cm", (10, 85), 
@@ -234,11 +276,11 @@ try:
                     try:
                         cursor = conn.cursor()
                         cursor.execute("""
-                            INSERT INTO riwayat_postur (status_postur, kemiringan_bahu, jarak_leher, pesan)
-                            VALUES (?, ?, ?, ?)
-                        """, (status_terakhir, kemiringan_halus, jarak_leher_halus, pesan_tambahan))
+                            INSERT INTO riwayat_postur (status_postur, kemiringan_bahu, jarak_leher, pesan, detail_postur)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (status_terakhir, kemiringan_halus, jarak_leher_halus, pesan_tambahan, detail_postur))
                         conn.commit()
-                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Data disimpan ke DB: {status_terakhir} | Bahu: {kemiringan_halus:.1f} | Leher: {jarak_leher_halus:.1f} | Pesan: {pesan_tambahan}")
+                        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Data disimpan ke DB: {status_terakhir} | Bahu: {kemiringan_halus:.1f} | Leher: {jarak_leher_halus:.1f} | Pesan: {pesan_tambahan} | Detail: {detail_postur}")
                         last_save_time = current_time
                     except sqlite3.Error as db_err:
                         print(f"Gagal menyimpan data ke database: {db_err}")
