@@ -49,19 +49,27 @@ def muat_riwayat() -> pd.DataFrame:
         return pd.DataFrame()
     try:
         conn = sqlite3.connect(DB_PATH)
-        df = pd.read_sql_query(
-            "SELECT timestamp, status_postur, kemiringan_bahu, jarak_leher, pesan "
-            "FROM riwayat_postur ORDER BY timestamp",
-            conn,
-        )
+        try:
+            df = pd.read_sql_query(
+                "SELECT timestamp, status_postur, kemiringan_bahu, jarak_leher, pesan, detail_postur "
+                "FROM riwayat_postur ORDER BY timestamp",
+                conn,
+            )
+        except (sqlite3.Error, pd.errors.DatabaseError):
+            df = pd.read_sql_query(
+                "SELECT timestamp, status_postur, kemiringan_bahu, jarak_leher, pesan "
+                "FROM riwayat_postur ORDER BY timestamp",
+                conn,
+            )
+            df["detail_postur"] = ""
         conn.close()
     except (sqlite3.Error, pd.errors.DatabaseError):
         return pd.DataFrame()
 
     if not df.empty:
         df["timestamp"] = pd.to_datetime(df["timestamp"])
-        df["tanggal"] = df["timestamp"].dt.date
-        df["jam"] = df["timestamp"].dt.hour
+        df["tanggal"] = df["timestamp"].dt.date  # type: ignore
+        df["jam"] = df["timestamp"].dt.hour  # type: ignore
     return df
 
 
@@ -202,6 +210,22 @@ with tab_masalah:
             use_container_width=True,
             hide_index=True,
         )
+
+        st.divider()
+        st.subheader("Distribusi Klasifikasi Detail Postur (Model Multiclass)")
+        detail_bersih = df_non["detail_postur"].fillna("").str.strip()
+        detail_valid = detail_bersih[detail_bersih != ""]
+        if detail_valid.empty:
+            st.info("Belum ada data detail klasifikasi postur untuk rentang ini.")
+        else:
+            detail_mapped = detail_valid.map(lambda x: NAMA_LABEL.get(x, x))
+            dist_detail = detail_mapped.value_counts()
+            st.bar_chart(dist_detail)
+            st.dataframe(
+                dist_detail.rename_axis("Klasifikasi Detail").reset_index(name="Jumlah"),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 with tab_dataset:
     st.subheader("🧬 Distribusi Label Dataset Latih")
