@@ -12,8 +12,10 @@ Menjalankan:
 import os
 import sqlite3
 
+import altair as alt
 import pandas as pd
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 # ----------------------------------------------------------------------------
 # Konfigurasi & Path
@@ -21,6 +23,13 @@ import streamlit as st
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "data", "posturemate.db")
 DATASET_PATH = os.path.join(BASE_DIR, "data", "dataset.csv")
+
+# Palet warna brand
+INDIGO = "#6366F1"
+UNGU = "#8B5CF6"
+HIJAU = "#10B981"
+MERAH = "#EF4444"
+KUNING = "#F59E0B"
 
 # Pemetaan kode label dataset -> nama yang mudah dibaca
 NAMA_LABEL = {
@@ -39,9 +48,88 @@ st.set_page_config(
 
 
 # ----------------------------------------------------------------------------
+# Gaya / CSS Kustom
+# ----------------------------------------------------------------------------
+def suntik_css() -> None:
+    st.markdown(
+        """
+        <style>
+        /* Sembunyikan elemen bawaan agar lebih bersih */
+        #MainMenu, footer {visibility: hidden;}
+        .block-container {padding-top: 2rem; padding-bottom: 3rem; max-width: 1200px;}
+
+        /* Header hero dengan gradien */
+        .hero {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 60%, #A855F7 100%);
+            padding: 1.6rem 2rem;
+            border-radius: 20px;
+            color: #FFFFFF;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25);
+            margin-bottom: 1.4rem;
+        }
+        .hero h1 {margin: 0; font-size: 2rem; font-weight: 800; color: #FFFFFF;}
+        .hero p {margin: 0.35rem 0 0; opacity: 0.92; font-size: 0.98rem;}
+
+        /* Banner status live */
+        .status-banner {
+            display: flex; align-items: center; gap: 14px;
+            padding: 1.1rem 1.5rem; border-radius: 16px;
+            margin-bottom: 1.2rem; font-weight: 700;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .status-dot {width: 14px; height: 14px; border-radius: 50%;
+            box-shadow: 0 0 0 6px rgba(255,255,255,0.45);}
+        .status-baik {background: #ECFDF5; color: #065F46;}
+        .status-buruk {background: #FEF2F2; color: #991B1B;}
+
+        /* Kartu metrik */
+        div[data-testid="stMetric"] {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.10);
+        }
+        div[data-testid="stMetricLabel"] p {color: #64748B; font-weight: 600;}
+        div[data-testid="stMetricValue"] {color: #0F172A; font-weight: 800;}
+
+        /* Tab */
+        button[data-baseweb="tab"] {font-weight: 600;}
+
+        /* Sub-judul section */
+        h3 {color: #1E293B; font-weight: 700;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def gaya_grafik(c: alt.Chart) -> alt.Chart:
+    """Terapkan gaya konsisten yang bersih pada chart Altair."""
+    return (
+        c.configure_view(strokeWidth=0)
+        .configure_axis(
+            grid=True,
+            gridColor="#EEF2F7",
+            domain=False,
+            labelColor="#64748B",
+            titleColor="#475569",
+            labelFontSize=11,
+            titleFontSize=12,
+        )
+        .configure_legend(labelColor="#475569", titleColor="#334155")
+    )
+
+
+# ----------------------------------------------------------------------------
 # Pemuatan Data
 # ----------------------------------------------------------------------------
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=5)
 def muat_riwayat() -> pd.DataFrame:
     """Membaca tabel riwayat_postur dari SQLite. Kembalikan DataFrame kosong
     bila DB / tabel belum ada (kamera_ai.py belum pernah dijalankan)."""
@@ -83,20 +171,35 @@ def muat_dataset() -> pd.DataFrame:
 # ----------------------------------------------------------------------------
 # Header & Sidebar
 # ----------------------------------------------------------------------------
-st.title("🪑 PostureMate — Dashboard Analitik")
-st.caption(
-    "Visualisasi riwayat postur duduk dari sesi deteksi real-time. "
-    "Data dicatat otomatis oleh `kamera_ai.py` setiap 5 detik."
+suntik_css()
+
+st.markdown(
+    """
+    <div class="hero">
+        <h1>🪑 PostureMate — Dashboard Analitik</h1>
+        <p>Visualisasi riwayat postur duduk dari sesi deteksi real-time.
+        Data dicatat otomatis oleh <code style="color:#FDE68A">kamera_ai.py</code> setiap 5 detik.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+
+with st.sidebar:
+    st.header("⚙️ Pengaturan")
+
+    auto_refresh = st.toggle("🔄 Auto-refresh (5 detik)", value=True)
+    if auto_refresh:
+        # Rerun otomatis tiap 5 detik agar data baru dari kamera ikut tampil
+        st_autorefresh(interval=5000, key="auto_refresh_dashboard")
+        st.caption("Dashboard memuat ulang data otomatis tiap 5 detik.")
+
+    if st.button("🔄 Muat Ulang Data Sekarang", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 df = muat_riwayat()
 
 with st.sidebar:
-    st.header("⚙️ Pengaturan")
-    if st.button("🔄 Muat Ulang Data"):
-        st.cache_data.clear()
-        st.rerun()
-
     if not df.empty:
         tanggal_tersedia = sorted(df["tanggal"].unique())
         pilih_tanggal = st.multiselect(
@@ -121,17 +224,55 @@ if df.empty:
         "Jalankan deteksi real-time terlebih dahulu agar dashboard memiliki data:\n\n"
         "```bash\npython posturemate/app/kamera_ai.py\n```\n\n"
         "Setelah beberapa sesi terekam, kembali ke halaman ini dan klik "
-        "**🔄 Muat Ulang Data**."
+        "**🔄 Muat Ulang Data Sekarang**."
     )
     # Tetap tampilkan eksplorasi dataset latih bila tersedia
     ds = muat_dataset()
     if not ds.empty:
         st.divider()
         st.subheader("🧬 Eksplorasi Dataset Latih")
-        dist = ds["upperbody_label"].map(lambda x: NAMA_LABEL.get(x, x)).value_counts()
-        st.bar_chart(dist)
+        dist = (
+            ds["upperbody_label"].map(lambda x: NAMA_LABEL.get(x, x)).value_counts()
+            .rename_axis("Kategori").reset_index(name="Jumlah")
+        )
+        chart = (
+            alt.Chart(dist)
+            .mark_bar(cornerRadiusEnd=5, color=INDIGO)
+            .encode(
+                x=alt.X("Jumlah:Q", title="Jumlah Sampel"),
+                y=alt.Y("Kategori:N", sort="-x", title=None),
+                tooltip=["Kategori", "Jumlah"],
+            )
+            .properties(height=240)
+        )
+        st.altair_chart(gaya_grafik(chart), use_container_width=True)
         st.caption(f"Total {len(ds):,} sampel pada `dataset.csv`.")
     st.stop()
+
+
+# ----------------------------------------------------------------------------
+# Banner Status Terkini
+# ----------------------------------------------------------------------------
+status_terkini = df.iloc[-1]["status_postur"]
+waktu_terkini = df.iloc[-1]["timestamp"].strftime("%d %b %Y, %H:%M:%S")
+if status_terkini == "Ergonomis":
+    st.markdown(
+        f"""<div class="status-banner status-baik">
+        <span class="status-dot" style="background:{HIJAU}"></span>
+        Postur terakhir: ERGONOMIS ✅
+        <span style="font-weight:500; opacity:.75; margin-left:auto">Diperbarui {waktu_terkini}</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        f"""<div class="status-banner status-buruk">
+        <span class="status-dot" style="background:{MERAH}"></span>
+        Postur terakhir: NON-ERGONOMIS ⚠️
+        <span style="font-weight:500; opacity:.75; margin-left:auto">Diperbarui {waktu_terkini}</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 
 # ----------------------------------------------------------------------------
@@ -161,7 +302,27 @@ with tab_ringkasan:
     col_kiri, col_kanan = st.columns([1, 1])
     with col_kiri:
         st.subheader("Proporsi Postur")
-        st.bar_chart(df["status_postur"].value_counts())
+        src = (
+            df["status_postur"].value_counts()
+            .rename_axis("Status").reset_index(name="Jumlah")
+        )
+        donut = (
+            alt.Chart(src)
+            .mark_arc(innerRadius=70, cornerRadius=4)
+            .encode(
+                theta=alt.Theta("Jumlah:Q", stack=True),
+                color=alt.Color(
+                    "Status:N",
+                    scale=alt.Scale(
+                        domain=["Ergonomis", "Non-Ergonomis"], range=[HIJAU, MERAH]
+                    ),
+                    legend=alt.Legend(orient="bottom", title=None),
+                ),
+                tooltip=["Status", "Jumlah"],
+            )
+            .properties(height=280)
+        )
+        st.altair_chart(gaya_grafik(donut), use_container_width=True)
     with col_kanan:
         st.subheader("Rata-rata Metrik")
         st.metric("Kemiringan Bahu (rata-rata)", f"{df['kemiringan_bahu'].mean():.1f}°")
@@ -169,8 +330,27 @@ with tab_ringkasan:
 
 with tab_tren:
     st.subheader("Metrik Postur dari Waktu ke Waktu")
-    df_idx = df.set_index("timestamp")[["kemiringan_bahu", "jarak_leher"]]
-    st.line_chart(df_idx)
+    df_long = (
+        df[["timestamp", "kemiringan_bahu", "jarak_leher"]]
+        .rename(columns={"kemiringan_bahu": "Kemiringan Bahu", "jarak_leher": "Jarak Leher (Z)"})
+        .melt("timestamp", var_name="Metrik", value_name="Nilai")
+    )
+    garis = (
+        alt.Chart(df_long)
+        .mark_line(strokeWidth=2, point=False)
+        .encode(
+            x=alt.X("timestamp:T", title="Waktu"),
+            y=alt.Y("Nilai:Q", title=None),
+            color=alt.Color(
+                "Metrik:N",
+                scale=alt.Scale(range=[INDIGO, KUNING]),
+                legend=alt.Legend(orient="top", title=None),
+            ),
+            tooltip=[alt.Tooltip("timestamp:T", title="Waktu"), "Metrik", alt.Tooltip("Nilai:Q", format=".1f")],
+        )
+        .properties(height=300)
+    )
+    st.altair_chart(gaya_grafik(garis), use_container_width=True)
     st.caption(
         "Kemiringan bahu tinggi → bahu tidak rata. "
         "Jarak leher (Z) tinggi → kepala terlalu maju ke depan."
@@ -183,12 +363,38 @@ with tab_tren:
         .groupby("tanggal")["baik"]
         .mean()
         .mul(100)
+        .rename_axis("Tanggal").reset_index(name="Persen")
     )
-    st.bar_chart(per_hari)
+    per_hari["Tanggal"] = per_hari["Tanggal"].astype(str)
+    bar_hari = (
+        alt.Chart(per_hari)
+        .mark_bar(cornerRadiusEnd=5, color=HIJAU)
+        .encode(
+            x=alt.X("Tanggal:N", title=None),
+            y=alt.Y("Persen:Q", title="% Ergonomis", scale=alt.Scale(domain=[0, 100])),
+            tooltip=["Tanggal", alt.Tooltip("Persen:Q", format=".1f")],
+        )
+        .properties(height=260)
+    )
+    st.altair_chart(gaya_grafik(bar_hari), use_container_width=True)
 
     st.divider()
     st.subheader("Aktivitas per Jam")
-    st.bar_chart(df["jam"].value_counts().sort_index())
+    per_jam = (
+        df["jam"].value_counts().sort_index()
+        .rename_axis("Jam").reset_index(name="Jumlah")
+    )
+    bar_jam = (
+        alt.Chart(per_jam)
+        .mark_bar(cornerRadiusEnd=5, color=INDIGO)
+        .encode(
+            x=alt.X("Jam:O", title="Jam (24h)"),
+            y=alt.Y("Jumlah:Q", title="Catatan"),
+            tooltip=["Jam", "Jumlah"],
+        )
+        .properties(height=240)
+    )
+    st.altair_chart(gaya_grafik(bar_jam), use_container_width=True)
 
 with tab_masalah:
     st.subheader("Distribusi Jenis Peringatan Postur")
@@ -199,16 +405,23 @@ with tab_masalah:
         pesan_bersih = (
             df_non["pesan"].fillna("").str.strip().replace("", "(tanpa keterangan)")
         )
-        dist_pesan = pesan_bersih.value_counts()
-        st.bar_chart(dist_pesan)
+        dist_pesan = (
+            pesan_bersih.value_counts().rename_axis("Pesan").reset_index(name="Jumlah")
+        )
+        bar_pesan = (
+            alt.Chart(dist_pesan)
+            .mark_bar(cornerRadiusEnd=5, color=MERAH)
+            .encode(
+                x=alt.X("Jumlah:Q", title="Jumlah"),
+                y=alt.Y("Pesan:N", sort="-x", title=None),
+                tooltip=["Pesan", "Jumlah"],
+            )
+            .properties(height=max(180, 42 * len(dist_pesan)))
+        )
+        st.altair_chart(gaya_grafik(bar_pesan), use_container_width=True)
         st.caption(
             f"Total {len(df_non):,} catatan non-ergonomis. "
             "Peringatan paling sering muncul di urutan teratas."
-        )
-        st.dataframe(
-            dist_pesan.rename_axis("Pesan").reset_index(name="Jumlah"),
-            use_container_width=True,
-            hide_index=True,
         )
 
         st.divider()
@@ -218,14 +431,21 @@ with tab_masalah:
         if detail_valid.empty:
             st.info("Belum ada data detail klasifikasi postur untuk rentang ini.")
         else:
-            detail_mapped = detail_valid.map(lambda x: NAMA_LABEL.get(x, x))
-            dist_detail = detail_mapped.value_counts()
-            st.bar_chart(dist_detail)
-            st.dataframe(
-                dist_detail.rename_axis("Klasifikasi Detail").reset_index(name="Jumlah"),
-                use_container_width=True,
-                hide_index=True,
+            dist_detail = (
+                detail_valid.map(lambda x: NAMA_LABEL.get(x, x))
+                .value_counts().rename_axis("Klasifikasi").reset_index(name="Jumlah")
             )
+            bar_detail = (
+                alt.Chart(dist_detail)
+                .mark_bar(cornerRadiusEnd=5, color=KUNING)
+                .encode(
+                    x=alt.X("Jumlah:Q", title="Jumlah"),
+                    y=alt.Y("Klasifikasi:N", sort="-x", title=None),
+                    tooltip=["Klasifikasi", "Jumlah"],
+                )
+                .properties(height=max(180, 42 * len(dist_detail)))
+            )
+            st.altair_chart(gaya_grafik(bar_detail), use_container_width=True)
 
 with tab_dataset:
     st.subheader("🧬 Distribusi Label Dataset Latih")
@@ -233,8 +453,21 @@ with tab_dataset:
     if ds.empty:
         st.warning("`dataset.csv` tidak ditemukan.")
     else:
-        dist = ds["upperbody_label"].map(lambda x: NAMA_LABEL.get(x, x)).value_counts()
-        st.bar_chart(dist)
+        dist = (
+            ds["upperbody_label"].map(lambda x: NAMA_LABEL.get(x, x)).value_counts()
+            .rename_axis("Kategori").reset_index(name="Jumlah")
+        )
+        bar_ds = (
+            alt.Chart(dist)
+            .mark_bar(cornerRadiusEnd=5, color=UNGU)
+            .encode(
+                x=alt.X("Jumlah:Q", title="Jumlah Sampel"),
+                y=alt.Y("Kategori:N", sort="-x", title=None),
+                tooltip=["Kategori", "Jumlah"],
+            )
+            .properties(height=260)
+        )
+        st.altair_chart(gaya_grafik(bar_ds), use_container_width=True)
         st.caption(
             f"Total {len(ds):,} sampel. Dipakai untuk melatih model biner & "
             "multiclass di `src/latih_ai.py`."
