@@ -8,3 +8,5 @@ streamlit
 jupyter
 fastapi
 uvicorn
+requests
+streamlit-autorefresh
